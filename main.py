@@ -1,35 +1,40 @@
 from threading import Thread
-import vk_module
+
 import telegram_module
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-VK_USER_ID = os.getenv('AlEX_VK')
-TELEGRAM_CHAT_ID = os.getenv('AlEX_TG')
+import vk_module
+from buttons_telegram import send_verification_request
+from buttons_vk import send_verification_request_vk
+from db_utils import check_and_create_db
 
 
-def send_message_to_vk(message):
-    vk_module.vk.messages.send(
-        user_id=VK_USER_ID,
-        random_id=0,
-        message=message
-    )
+def send_message_to_vk(chat_id, message):
+    '''Функция отправляющая сообщение в вк'''
+    message = f'[{message.from_user.username}]\n\n{message.text}'
+    vk_module.send_message(chat_id, message)
 
 
-def send_message_to_telegram(message):
+def send_message_to_telegram(chat_id, event, sender_info):
+    '''Функция отправляющая сообщение в тг'''
+    first_name = sender_info['first_name']
+    last_name = sender_info['last_name']
+    text = event.object.message["text"]
+    message = f'*{first_name} {last_name}*\n\n{text}'
     telegram_module.bot.send_message(
-        chat_id=TELEGRAM_CHAT_ID,
-        text=message
+        chat_id=chat_id, text=message, parse_mode='MarkdownV2'
     )
 
 
 if __name__ == '__main__':
-    vk_thread = Thread(target=vk_module.listen_to_vk,
-                       args=(send_message_to_telegram,))
-    telegram_thread = Thread(target=telegram_module.start_telegram_bot,
-                             args=(send_message_to_vk,))
+    check_and_create_db()
+
+    vk_thread = Thread(
+        target=vk_module.listen_to_vk,
+        args=(send_message_to_telegram, send_verification_request),
+    )
+    telegram_thread = Thread(
+        target=telegram_module.start_telegram_bot,
+        args=(send_message_to_vk, send_verification_request_vk),
+    )
 
     # Запуск потоков
     vk_thread.start()
