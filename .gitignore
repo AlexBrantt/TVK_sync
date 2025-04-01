@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 sqlite_creator.py
+db.sqlite
 
 # Distribution / packaging
 .Python
